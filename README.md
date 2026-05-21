@@ -2,6 +2,39 @@
 
 CodexBridge is a Codex-centered gateway for connecting multiple chat platforms to one shared Codex engine, while switching backend provider profiles inside Codex when needed.
 
+## Quick Start
+
+Use this path when you only want to bring up the `WeChat + Codex` bridge.
+
+Prerequisites:
+
+- Node.js `>= 24`
+- `npm`
+- a working Codex CLI login on the host
+
+```bash
+npm install
+npm run typecheck
+npm test
+codex --version
+npm run weixin:login
+npm run weixin:serve -- --cwd /absolute/path/to/workspace
+```
+
+On Windows, run the same flow from PowerShell and use a Windows workspace path:
+
+```powershell
+npm install
+npm run typecheck
+npm test
+codex --version
+where codex
+npm run weixin:login
+npm run weixin:serve -- --cwd C:\absolute\path\to\workspace
+```
+
+After scanning the WeChat QR code, keep `weixin:serve` running and send `/h` or `/status` in WeChat as the first smoke test. For unattended use, install the background service after login; see [Background Service](#background-service).
+
 ## Current Direction
 
 - First delivery target: `WeChat + Codex`
@@ -86,6 +119,8 @@ Runtime WebSocket is still disabled for the local OpenAI-compatible adapter unti
 
 The WeChat bridge now uses a text-first command surface designed for chat, not buttons.
 Recommended entrypoints:
+
+The examples below are UTF-8 text meant to be copied into WeChat as normal Chinese. If a local Windows terminal shows garbled Chinese, open this README in a UTF-8 aware editor or view it on GitHub before copying commands.
 
 ```text
 /helps
@@ -355,7 +390,7 @@ When you intentionally want to keep live agent credentials and exercise the real
 npm run test:live-agent
 ```
 
-Keep `test:live-agent` separate from the main suite. It is for deliberate provider-backed verification, not for the default `npm test` gate.
+Keep `test:live-agent` separate from the main suite and first-time deployment checklist. It is for deliberate provider-backed verification after credentials are configured, not for the default `npm test` gate.
 
 ## Deployment Quick Start
 
@@ -389,7 +424,6 @@ If `codex --version` still fails, fix that before attempting `weixin:login` or `
 npm install
 npm run typecheck
 npm test
-npm run test:live-agent
 codex --version
 npm run weixin:login
 npm run weixin:serve -- --cwd /absolute/path/to/workspace
@@ -405,7 +439,6 @@ Open PowerShell in the repo root and run:
 npm install
 npm run typecheck
 npm test
-npm run test:live-agent
 codex --version
 where codex
 npm run weixin:login

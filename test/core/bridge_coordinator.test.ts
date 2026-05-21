@@ -1649,6 +1649,39 @@ test('bridge coordinator auto-rebinds to a new session when rollout loading keep
   assert.notEqual(rebound?.codexThreadId, original.session?.codexThreadId);
 });
 
+test('bridge coordinator auto-rebinds when Codex reports an empty rollout while loading thread history', async () => {
+  const { runtime, openai } = makeRuntime();
+  const original = await runtime.services.bridgeCoordinator.handleInboundEvent({
+    platform: 'weixin',
+    externalScopeId: 'wx-user-1',
+    text: 'hello codexbridge',
+  });
+
+  const originalStartTurn = openai.startTurn.bind(openai);
+  openai.startTurn = async (args) => {
+    if (args.bridgeSession.codexThreadId === original.session.codexThreadId) {
+      throw new Error(`failed to load thread history for thread ${args.bridgeSession.codexThreadId}: thread-store internal error: failed to read thread \\\\?\\C:\\Users\\Administrator\\.codex\\sessions\\2026\\05\\21\\rollout-2026-05-21T11-54-22-${args.bridgeSession.codexThreadId}.jsonl: rollout at \\\\?\\C:\\Users\\Administrator\\.codex\\sessions\\2026\\05\\21\\rollout-2026-05-21T11-54-22-${args.bridgeSession.codexThreadId}.jsonl is empty`);
+    }
+    return originalStartTurn(args);
+  };
+
+  const result = await runtime.services.bridgeCoordinator.handleInboundEvent({
+    platform: 'weixin',
+    externalScopeId: 'wx-user-1',
+    text: 'hello after empty rollout thread history',
+  });
+
+  assert.match(result.messages[0]?.text ?? '', /openai: hello after empty rollout thread history/);
+  assert.equal(openai.startThreadCalls.length, 2);
+
+  const rebound = runtime.services.bridgeSessions.resolveScopeSession({
+    platform: 'weixin',
+    externalScopeId: 'wx-user-1',
+  });
+  assert.notEqual(rebound?.id, original.session?.bridgeSessionId);
+  assert.notEqual(rebound?.codexThreadId, original.session?.codexThreadId);
+});
+
 test('/status reports when no bridge session is bound yet', async () => {
   const { runtime } = makeRuntime();
 

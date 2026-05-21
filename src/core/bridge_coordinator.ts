@@ -19006,12 +19006,33 @@ function buildPluginCategoryBuckets(details: ProviderPluginDetail[], i18n: Trans
       if (right.items.length !== left.items.length) {
         return right.items.length - left.items.length;
       }
-      return left.label.localeCompare(right.label);
+      const rankDelta = pluginCategorySortRank(left.key) - pluginCategorySortRank(right.key);
+      if (rankDelta !== 0) {
+        return rankDelta;
+      }
+      return left.label.localeCompare(right.label, 'en-US');
     })
     .map((bucket) => ({
       ...bucket,
       items: [...bucket.items].sort((left, right) => comparePluginsForDisplay(left.summary, right.summary)),
     }));
+}
+
+function pluginCategorySortRank(key: string): number {
+  switch (key) {
+    case 'app':
+      return 10;
+    case 'mcp':
+      return 20;
+    case 'skill':
+      return 30;
+    case 'mixed':
+      return 40;
+    case 'other':
+      return 50;
+    default:
+      return 100;
+  }
 }
 
 function resolvePluginCategorySelection(token: string, buckets: PluginCategoryBucket[]): { index: number; bucket: PluginCategoryBucket } | null {
@@ -20586,7 +20607,10 @@ function isResumeRetryableError(error) {
   const message = error instanceof Error ? error.message : String(error);
   return /failed to load rollout/i.test(message)
     || /empty session file/i.test(message)
-    || /no rollout found/i.test(message);
+    || /no rollout found/i.test(message)
+    || /failed to load thread history/i.test(message)
+    || /failed to read thread/i.test(message)
+    || /rollout\b[\s\S]*\bis empty/i.test(message);
 }
 
 function shouldAutoRebindAfterRecoveryFailure(error) {

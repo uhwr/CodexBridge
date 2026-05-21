@@ -3499,7 +3499,10 @@ function isThreadMaterializationPendingError(error) {
   const message = error instanceof Error ? error.message : String(error);
   return /not materialized yet/i.test(message)
     || /includeTurns is unavailable before first user message/i.test(message)
-    || /empty session file/i.test(message);
+    || /empty session file/i.test(message)
+    || /failed to load thread history/i.test(message)
+    || /failed to read thread/i.test(message)
+    || /rollout\b[\s\S]*\bis empty/i.test(message);
 }
 
 function isIncludeTurnsUnsupportedError(error) {

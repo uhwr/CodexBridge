@@ -11,6 +11,7 @@ const LIVE_OPENAI_COMPATIBLE_TEST_ENV_FLAG = 'CODEXBRIDGE_TEST_LIVE_OPENAI_COMPA
 loadOptionalEnvFile(process.env.CODEXBRIDGE_TEST_ENV_FILE);
 const isolatedEnv = { ...process.env };
 isolatedEnv[AGENT_COMMAND_ENV_FLAG] ??= '1';
+isolatedEnv.TZ ??= 'Etc/UTC';
 const allowLiveAgent = isolatedEnv[LIVE_AGENT_TEST_ENV_FLAG] === '1';
 const allowLiveOpenAICompatible = isolatedEnv[LIVE_OPENAI_COMPATIBLE_TEST_ENV_FLAG] === '1';
 
