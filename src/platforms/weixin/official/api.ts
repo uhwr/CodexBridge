@@ -22,6 +22,8 @@ const ILINK_APP_CLIENT_VERSION = (2 << 16) | (2 << 8) | 0;
 const DEFAULT_LONG_POLL_TIMEOUT_MS = 35_000;
 const DEFAULT_API_TIMEOUT_MS = 15_000;
 const DEFAULT_CONFIG_TIMEOUT_MS = 10_000;
+const DEFAULT_ADDRESS_ATTEMPT_TIMEOUT_MS = 5_000;
+const DEFAULT_LONG_POLL_ADDRESS_ATTEMPT_TIMEOUT_MS = 20_000;
 const DEFAULT_CHANNEL_VERSION = '2.2.0';
 
 interface WeixinFetchResponse {
@@ -326,7 +328,7 @@ async function requestJsonWithAddressRotation<T>(params: RawRequestOptions & {
         url,
         address,
         params,
-        timeoutMs: Math.min(20_000, remainingMs),
+        timeoutMs: Math.min(computeAddressAttemptTimeoutMs(params), remainingMs),
       });
       debugWeixinHttp('request_end', {
         method: params.method,
@@ -383,6 +385,12 @@ async function resolveHostAddresses(hostname: string): Promise<string[]> {
   } catch {
     return [hostname];
   }
+}
+
+function computeAddressAttemptTimeoutMs(params: RawRequestOptions): number {
+  return params.endpoint === 'ilink/bot/getupdates'
+    ? DEFAULT_LONG_POLL_ADDRESS_ATTEMPT_TIMEOUT_MS
+    : DEFAULT_ADDRESS_ATTEMPT_TIMEOUT_MS;
 }
 
 function requestJsonOverHttpsAddress({

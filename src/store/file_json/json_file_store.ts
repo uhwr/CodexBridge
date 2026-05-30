@@ -13,7 +13,8 @@ export class JsonFileStore<T> {
 
   read(): T {
     this.ensureInitialized();
-    return JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
+    const text = fs.readFileSync(this.filePath, 'utf8').replace(/^\uFEFF/u, '');
+    return JSON.parse(text);
   }
 
   write(value: T) {
