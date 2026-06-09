@@ -611,6 +611,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\service\logs-windows-task.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\service\logs-windows-task.ps1 -Follow
 ```
 
+如果希望右下角通知区域显示一个托盘控制图标，可以在扫码登录并安装桥接计划任务后运行：
+
+```powershell
+.\install-weixin-tray-after-login.cmd
+```
+
+托盘图标会随当前用户登录自动启动。右键菜单可查看状态、启动/停止/重启 `CodexBridge-Weixin` 计划任务、打开日志目录或实时跟随日志；双击图标会打开实时日志窗口。托盘图标只是控制器，真正的微信桥仍由 `CodexBridge-Weixin` 计划任务运行。
+
 安装器会把环境文件写到：
 
 ```text
