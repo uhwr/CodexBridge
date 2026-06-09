@@ -117,20 +117,28 @@ if (-not (Test-Path $EnvFile)) {
 }
 
 $Runner = Join-Path $RootDir "scripts\service\run-weixin-service.mjs"
-$Arguments = @(
-  "`"$Runner`"",
-  "--root-dir", "`"$RootDir`"",
-  "--home-dir", "`"$HomeDir`"",
-  "--state-dir", "`"$StateDir`"",
-  "--env-file", "`"$EnvFile`"",
-  "--stdout-log", "`"$StdoutLog`"",
-  "--stderr-log", "`"$StderrLog`""
+$HiddenRunner = Join-Path $RootDir "scripts\service\run-weixin-service-windows-task.ps1"
+
+$PowerShellBin = (Get-Command powershell.exe -ErrorAction Stop).Source
+$TaskArguments = @(
+  "-NoProfile",
+  "-ExecutionPolicy", "Bypass",
+  "-WindowStyle", "Hidden",
+  "-File", "`"$HiddenRunner`"",
+  "-NodeBin", "`"$NodeBin`"",
+  "-Runner", "`"$Runner`"",
+  "-RootDir", "`"$RootDir`"",
+  "-HomeDir", "`"$HomeDir`"",
+  "-StateDir", "`"$StateDir`"",
+  "-EnvFile", "`"$EnvFile`"",
+  "-StdoutLog", "`"$StdoutLog`"",
+  "-StderrLog", "`"$StderrLog`""
 )
 if ($DefaultCwd) {
-  $Arguments += @("--cwd", "`"$DefaultCwd`"")
+  $TaskArguments += @("-DefaultCwd", "`"$DefaultCwd`"")
 }
 
-$Action = New-ScheduledTaskAction -Execute $NodeBin -Argument ($Arguments -join " ")
+$Action = New-ScheduledTaskAction -Execute $PowerShellBin -Argument ($TaskArguments -join " ")
 $CurrentIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 $RunAsSystem = $CurrentIdentity -eq "NT AUTHORITY\SYSTEM"
 
