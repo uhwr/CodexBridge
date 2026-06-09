@@ -617,6 +617,40 @@ powershell -ExecutionPolicy Bypass -File .\scripts\service\logs-windows-task.ps1
 .\install-weixin-tray-after-login.cmd
 ```
 
+如果还需要把本机 Codex Native API 也作为后台服务开机自启，并让它和微信桥使用同一套 API/provider 配置：
+
+```powershell
+.\install-all-services-after-login.cmd C:\Users\Administrator\Documents
+```
+
+该命令会安装三个当前用户登录后自启的计划任务：
+
+- `CodexBridge-Codex`：独立 Codex Native API 服务，默认监听 `http://127.0.0.1:43182`
+- `CodexBridge-Weixin`：个人微信桥服务
+- `CodexBridge-Weixin-Tray`：右下角托盘控制器
+
+重复运行安装命令会先停止同项目目录下的旧后台实例，再注册并启动新的计划任务，避免重装或换配置时出现多个 `node.exe` 同时抢同一个微信桥锁。
+
+三者共用 `%APPDATA%\codexbridge\weixin.service.env`。更换 API 时优先改这个文件里的 provider/key/base URL/model，例如：
+
+```text
+CODEX_DEFAULT_PROVIDER_PROFILE_ID=pinai
+CODEX_COMPAT_PROVIDER_ID=pinai
+CODEX_COMPAT_PROVIDER_NAME=PinAI
+CODEX_COMPAT_API_KEY=...
+CODEX_COMPAT_BASE_URL=https://...
+CODEX_COMPAT_DEFAULT_MODEL=gpt-5.5
+```
+
+然后重启两个后台服务：
+
+```powershell
+Stop-ScheduledTask -TaskName "CodexBridge-Codex","CodexBridge-Weixin"
+Start-ScheduledTask -TaskName "CodexBridge-Codex","CodexBridge-Weixin"
+```
+
+默认情况下 `CODEX_NATIVE_API_PROVIDER_PROFILE_ID` 留空，Codex Native API 会跟随 `CODEX_DEFAULT_PROVIDER_PROFILE_ID`。只有希望 Native API 和微信桥使用不同 provider 时，才需要单独设置 `CODEX_NATIVE_API_PROVIDER_PROFILE_ID`。
+
 托盘图标会随当前用户登录自动启动。右键菜单可查看状态、启动/停止/重启 `CodexBridge-Weixin` 计划任务、打开日志目录或实时跟随日志；双击图标会打开实时日志窗口。托盘图标只是控制器，真正的微信桥仍由 `CodexBridge-Weixin` 计划任务运行。
 
 安装器会把环境文件写到：

@@ -141,7 +141,7 @@ test('parseCodexNativeApiServeArgs reads standalone native-api flags', () => {
   });
 });
 
-test('resolveEmbeddedCodexNativeApiOptions defaults native-api startup to the Codex path', () => {
+test('resolveEmbeddedCodexNativeApiOptions follows the default provider profile', () => {
   const options = resolveEmbeddedCodexNativeApiOptions({
     env: {
       CODEX_NATIVE_API_AUTH_TOKEN: 'native-secret',
@@ -153,7 +153,7 @@ test('resolveEmbeddedCodexNativeApiOptions defaults native-api startup to the Co
     enabled: true,
     host: '127.0.0.1',
     port: 43182,
-    providerProfileId: 'openai-default',
+    providerProfileId: 'qwen',
     authToken: 'native-secret',
     defaultModel: null,
     requestTitlePrefix: null,
@@ -172,7 +172,7 @@ test('resolveEmbeddedCodexNativeApiOptions allows explicit native-api opt-out', 
   assert.equal(options.enabled, false);
 });
 
-test('resolveEmbeddedCodexNativeApiOptions keeps embedded native-api on the Codex path while honoring host/port/model overrides', () => {
+test('resolveEmbeddedCodexNativeApiOptions honors explicit provider, host, port, and model overrides', () => {
   const options = resolveEmbeddedCodexNativeApiOptions({
     env: {
       CODEX_NATIVE_API_ENABLE: 'true',
@@ -189,7 +189,7 @@ test('resolveEmbeddedCodexNativeApiOptions keeps embedded native-api on the Code
     enabled: true,
     host: '127.0.0.2',
     port: 53182,
-    providerProfileId: 'openai-default',
+    providerProfileId: 'qwen',
     authToken: null,
     defaultModel: 'gpt-5.4',
     requestTitlePrefix: 'Bridge Native API',

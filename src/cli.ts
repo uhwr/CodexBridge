@@ -427,7 +427,8 @@ async function runCodexNativeApiServe(args: string[]) {
     ?? DEFAULT_CODEX_NATIVE_API_PORT;
   const providerProfileId = options.providerProfileId
     ?? normalizeCliString(process.env.CODEX_NATIVE_API_PROVIDER_PROFILE_ID)
-    ?? null;
+    ?? normalizeCliString(process.env.CODEX_NATIVE_API_PROVIDER_PROFILE)
+    ?? runtime.config.defaultProviderProfileId;
   const authToken = normalizeCliString(process.env.CODEX_NATIVE_API_AUTH_TOKEN);
   const defaultModel = normalizeCliString(process.env.CODEX_NATIVE_API_DEFAULT_MODEL);
   const requestTitlePrefix = normalizeCliString(process.env.CODEX_NATIVE_API_TITLE_PREFIX);
@@ -1009,10 +1010,9 @@ function resolveEmbeddedCodexNativeApiOptions({
   const enabled = parseBooleanEnv(env.CODEX_NATIVE_API_ENABLE, true);
   const host = normalizeCliString(env.CODEX_NATIVE_API_HOST) ?? DEFAULT_CODEX_NATIVE_API_HOST;
   const port = parseOptionalNonNegativeInt(env.CODEX_NATIVE_API_PORT) ?? DEFAULT_CODEX_NATIVE_API_PORT;
-  const preferredCodexProviderProfileId = defaultProviderProfileId === 'openai-default'
-    ? defaultProviderProfileId
-    : null;
-  const providerProfileId = preferredCodexProviderProfileId
+  const providerProfileId = normalizeCliString(env.CODEX_NATIVE_API_PROVIDER_PROFILE_ID)
+    ?? normalizeCliString(env.CODEX_NATIVE_API_PROVIDER_PROFILE)
+    ?? defaultProviderProfileId
     ?? 'openai-default';
   return {
     enabled,
