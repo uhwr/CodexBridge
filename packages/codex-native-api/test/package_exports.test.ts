@@ -69,7 +69,7 @@ test('service can bootstrap the default Codex provider and auth path automatical
     providerProfileId: 'openai-default',
     providerKind: 'openai-native',
     providerDisplayName: 'Codex OpenAI',
-    authPath: '/tmp/codex-native-api-home/auth.json',
+    authPath: path.resolve('/tmp/codex-native-api-home/auth.json'),
   });
 });
 

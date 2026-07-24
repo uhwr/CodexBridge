@@ -6,7 +6,7 @@ import test from 'node:test';
 import { finalizeTurnArtifacts } from '../../src/core/turn_artifacts.js';
 import type { TurnArtifactContext } from '../../src/types/core.js';
 
-test('finalizeTurnArtifacts rejects symlinked manifest files that escape the turn artifact directory', () => {
+test('finalizeTurnArtifacts rejects symlinked manifest files that escape the turn artifact directory', (testContext) => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codexbridge-artifacts-'));
   const artifactDir = path.join(tempDir, 'artifact-dir');
   const spoolDir = path.join(tempDir, 'spool-dir');
@@ -15,7 +15,16 @@ test('finalizeTurnArtifacts rejects symlinked manifest files that escape the tur
   fs.mkdirSync(artifactDir, { recursive: true });
   fs.mkdirSync(spoolDir, { recursive: true });
   fs.writeFileSync(outsideFile, 'outside');
-  fs.symlinkSync(outsideFile, symlinkPath);
+  try {
+    fs.symlinkSync(outsideFile, symlinkPath);
+  } catch (error) {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    if ((error as NodeJS.ErrnoException).code === 'EPERM') {
+      testContext.skip('Creating symlinks requires elevated privileges on this Windows host.');
+      return;
+    }
+    throw error;
+  }
 
   const context: TurnArtifactContext = {
     requestId: 'req-1',

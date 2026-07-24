@@ -22,6 +22,7 @@
     "src/platforms/weixin/account_store.ts",
     "src/platforms/weixin/formatting.ts",
     "src/platforms/weixin/poller.ts",
+    "src/platforms/weixin/official/vendor.d.ts",
     "src/platforms/telegram/plugin.ts",
     "src/providers/codex/config.ts",
     "src/providers/openai_compatible/plugin.ts",
