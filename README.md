@@ -26,7 +26,7 @@ npm run weixin:serve -- --cwd /absolute/path/to/workspace
 Windows 用户在 PowerShell 里执行同样流程，并使用 Windows 路径：
 
 ```powershell
-npm install
+npm ci
 npm run typecheck
 npm test
 codex --version
@@ -36,6 +36,15 @@ npm run weixin:serve -- --cwd C:\absolute\path\to\workspace
 ```
 
 扫码登录微信后，保持 `weixin:serve` 运行，并在微信里发送 `/h` 或 `/status` 做冒烟测试。需要后台常驻时，先完成扫码登录，再安装后台服务；详见 [后台服务](#后台服务)。
+
+如果本机保存了多个微信机器人授权，直接启动时需要明确选择账号：
+
+```powershell
+$env:WEIXIN_ACCOUNT_ID = "your-account-id@im.bot"
+npm run weixin:serve -- --cwd C:\absolute\path\to\workspace
+```
+
+`account_id` 会在 `npm run weixin:login` 成功后打印，也可以在 `%USERPROFILE%\.codexbridge\weixin\accounts\` 中查看。Windows 后台服务安装器会优先使用当前 `WEIXIN_ACCOUNT_ID`；没有显式设置时，会选择最近保存的账号文件。
 
 ## 当前方向
 
@@ -596,13 +605,21 @@ loginctl enable-linger "$USER"
 
 ### Windows 计划任务
 
-安装并启动隐藏的用户级计划任务：
+安装并启动用户级计划任务。任务注册需要管理员权限；如果直接运行 `install-all-services-after-login.cmd`，脚本会在必要时弹出标准 UAC 提升提示：
+
+```powershell
+.\install-all-services-after-login.cmd C:\Users\Administrator\Documents
+```
+
+该安装方式只使用 Windows 任务计划程序，不会在“启动”文件夹中创建隐藏 `.lnk` 或 PowerShell 启动快捷方式。
+
+如果只希望安装微信桥任务：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\service\install-windows-task.ps1
 ```
 
-常用后续命令：
+常用状态与日志命令：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\service\status-windows-task.ps1
@@ -617,12 +634,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\service\logs-windows-task.ps1
 .\install-weixin-tray-after-login.cmd
 ```
 
-如果还需要把本机 Codex Native API 也作为后台服务开机自启，并让它和微信桥使用同一套 API/provider 配置：
-
-```powershell
-.\install-all-services-after-login.cmd C:\Users\Administrator\Documents
-```
-
 该命令会安装三个当前用户登录后自启的计划任务：
 
 - `CodexBridge-Codex`：独立 Codex Native API 服务，默认监听 `http://127.0.0.1:43182`
@@ -630,6 +641,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\service\logs-windows-task.ps1
 - `CodexBridge-Weixin-Tray`：右下角托盘控制器
 
 重复运行安装命令会先停止同项目目录下的旧后台实例，再注册并启动新的计划任务，避免重装或换配置时出现多个 `node.exe` 同时抢同一个微信桥锁。
+
+安装器在 Windows 上会优先使用 `%APPDATA%\npm\codex.cmd`，避免误选 Codex Desktop 应用目录中不可直接执行的 `codex.exe`。
 
 三者共用 `%APPDATA%\codexbridge\weixin.service.env`。更换 API 时优先改这个文件里的 provider/key/base URL/model，例如：
 
@@ -645,8 +658,10 @@ CODEX_COMPAT_DEFAULT_MODEL=gpt-5.5
 然后重启两个后台服务：
 
 ```powershell
-Stop-ScheduledTask -TaskName "CodexBridge-Codex","CodexBridge-Weixin"
-Start-ScheduledTask -TaskName "CodexBridge-Codex","CodexBridge-Weixin"
+"CodexBridge-Codex","CodexBridge-Weixin" |
+  ForEach-Object { Stop-ScheduledTask -TaskName $_ }
+"CodexBridge-Codex","CodexBridge-Weixin" |
+  ForEach-Object { Start-ScheduledTask -TaskName $_ }
 ```
 
 默认情况下 `CODEX_NATIVE_API_PROVIDER_PROFILE_ID` 留空，Codex Native API 会跟随 `CODEX_DEFAULT_PROVIDER_PROFILE_ID`。只有希望 Native API 和微信桥使用不同 provider 时，才需要单独设置 `CODEX_NATIVE_API_PROVIDER_PROFILE_ID`。
@@ -665,7 +680,22 @@ Start-ScheduledTask -TaskName "CodexBridge-Codex","CodexBridge-Weixin"
 %USERPROFILE%\.codexbridge\logs\
 ```
 
-如果需要任务在机器启动时运行，而不是用户登录后运行，可以传入 `-AtStartup`。这个模式可能需要管理员权限，并且仍要确保用户环境能访问 Codex auth 文件。
+微信 service runner 默认在单个日志达到 `20 MB` 时轮转，并保留 `3` 份历史文件。可以在 `%APPDATA%\codexbridge\weixin.service.env` 中调整：
+
+```text
+CODEXBRIDGE_SERVICE_LOG_MAX_MB=20
+CODEXBRIDGE_SERVICE_LOG_FILES=3
+```
+
+推荐使用“当前用户登录后自启”，因为微信凭据和 Codex auth 文件都位于用户目录。如果确实需要任务在机器启动时运行，可以对单个安装脚本传入 `-AtStartup`；该模式需要管理员权限，并且必须确保任务运行身份能访问用户的 Codex auth 文件。
+
+### 微信登录与旧状态恢复
+
+- 二维码生成和状态查询允许较慢的网络响应；`ETIMEDOUT`、连接重置和临时网络不可达会在登录截止时间内自动重试，不会因为一次 5 秒网络抖动直接退出。
+- 如果二维码状态一直没有变化，重新运行 `npm run weixin:login` 并扫描新二维码。
+- 如果状态目录中只有一个微信授权，启动时会自动选择；多个授权需要设置 `WEIXIN_ACCOUNT_ID`，后台安装器默认选择最近保存的账号。
+- Provider 配置被删除或重命名后，运行时会自动丢弃指向不存在 Provider 的平台绑定。下一条普通消息会使用当前默认 Provider 创建新会话，避免 `/status` 因旧 Provider ID 直接报错。
+- `CODEXBRIDGE_DEBUG_WEIXIN=1` 会产生大量轮询和流式调试日志，只建议在短期排障时开启；长期后台运行建议保持为 `0`。
 
 ### macOS launchd 用户服务
 
