@@ -25,6 +25,7 @@ export interface BridgeSessionRepository {
 export interface PlatformBindingRepository {
   getByScope(platform: string, externalScopeId: string): PlatformBinding | null;
   save(binding: PlatformBinding): PlatformBinding;
+  delete(platform: string, externalScopeId: string): void;
   list(): PlatformBinding[];
 }
 

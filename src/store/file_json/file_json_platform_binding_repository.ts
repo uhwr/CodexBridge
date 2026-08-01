@@ -43,6 +43,13 @@ export class FileJsonPlatformBindingRepository implements PlatformBindingReposit
     return this.setBinding(binding);
   }
 
+  delete(platform: string, externalScopeId: string): void {
+    const scopeKey = formatPlatformScopeKey(platform, externalScopeId);
+    this.store.write(this.listAll().filter((record) =>
+      formatPlatformScopeKey(record.platform, record.externalScopeId) !== scopeKey,
+    ));
+  }
+
   list(): PlatformBinding[] {
     return this.listAll();
   }

@@ -79,7 +79,7 @@ export async function officialQrLogin(
         qrcode,
       });
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (isRetryableLoginNetworkError(error)) {
         await sleep(1000);
         continue;
       }
@@ -155,4 +155,22 @@ function defaultSleep(ms: number) {
   return new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function isRetryableLoginNetworkError(error: unknown) {
+  if (error instanceof Error && error.name === 'AbortError') {
+    return true;
+  }
+  const code = typeof error === 'object' && error && 'code' in error
+    ? String((error as { code?: unknown }).code ?? '')
+    : '';
+  return [
+    'ECONNRESET',
+    'ECONNREFUSED',
+    'EHOSTUNREACH',
+    'ENETUNREACH',
+    'ETIMEDOUT',
+    'UND_ERR_CONNECT_TIMEOUT',
+    'UND_ERR_HEADERS_TIMEOUT',
+  ].includes(code);
 }

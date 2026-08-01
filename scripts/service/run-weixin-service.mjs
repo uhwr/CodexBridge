@@ -15,16 +15,25 @@ const stateDir = path.resolve(args.stateDir ?? process.env.CODEXBRIDGE_STATE_DIR
 const envFile = path.resolve(args.envFile ?? defaultServiceEnvFile());
 const stdoutLog = args.stdoutLog ? path.resolve(args.stdoutLog) : null;
 const stderrLog = args.stderrLog ? path.resolve(args.stderrLog) : null;
-const restartMs = Math.max(0, Number.parseFloat(args.restartSec ?? process.env.CODEXBRIDGE_SERVICE_RESTART_SEC ?? '2') * 1000);
 const serveCwd = args.cwd ? path.resolve(args.cwd) : null;
 const once = Boolean(args.once);
 
 let child = null;
 let stopping = false;
+let restartMs = 2_000;
+let maxLogBytes = 20 * 1024 * 1024;
+let retainedLogFiles = 3;
+const logSizes = new Map();
 
 await loadEnvFile(path.join(rootDir, '.env'));
 await loadEnvFile(path.join(rootDir, '.env.local'));
 await loadEnvFile(envFile);
+restartMs = parseNonNegativeNumber(
+  args.restartSec ?? process.env.CODEXBRIDGE_SERVICE_RESTART_SEC,
+  2,
+) * 1000;
+maxLogBytes = parsePositiveNumber(process.env.CODEXBRIDGE_SERVICE_LOG_MAX_MB, 20) * 1024 * 1024;
+retainedLogFiles = parsePositiveInteger(process.env.CODEXBRIDGE_SERVICE_LOG_FILES, 3);
 if (homeDir) {
   process.env.HOME = homeDir;
   process.env.USERPROFILE = homeDir;
@@ -42,6 +51,12 @@ if (stdoutLog) {
 }
 if (stderrLog) {
   await fsp.mkdir(path.dirname(stderrLog), { recursive: true });
+}
+for (const logPath of [stdoutLog, stderrLog]) {
+  if (logPath) {
+    rotateLogFile(logPath);
+    logSizes.set(logPath, fileSize(logPath));
+  }
 }
 
 process.on('SIGINT', () => stop('SIGINT'));
@@ -148,7 +163,14 @@ function writeChunk(streamName, chunk) {
   }
   const logPath = streamName === 'stderr' ? stderrLog : stdoutLog;
   if (logPath) {
-    fs.appendFile(logPath, text, () => {});
+    const chunkBytes = Buffer.byteLength(text, 'utf8');
+    const currentSize = logSizes.get(logPath) ?? fileSize(logPath);
+    if (currentSize + chunkBytes > maxLogBytes) {
+      rotateLogFile(logPath);
+      logSizes.set(logPath, 0);
+    }
+    fs.appendFileSync(logPath, text, 'utf8');
+    logSizes.set(logPath, (logSizes.get(logPath) ?? 0) + chunkBytes);
   }
 }
 
@@ -178,6 +200,46 @@ function parseArgs(argv) {
     }
   }
   return parsed;
+}
+
+function parseNonNegativeNumber(value, fallback) {
+  const parsed = Number.parseFloat(String(value ?? ''));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function parsePositiveNumber(value, fallback) {
+  const parsed = Number.parseFloat(String(value ?? ''));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parsePositiveInteger(value, fallback) {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function fileSize(filePath) {
+  try {
+    return fs.statSync(filePath).size;
+  } catch {
+    return 0;
+  }
+}
+
+function rotateLogFile(filePath) {
+  if (fileSize(filePath) < maxLogBytes) {
+    return;
+  }
+  for (let index = retainedLogFiles; index >= 1; index -= 1) {
+    const source = index === 1 ? filePath : `${filePath}.${index - 1}`;
+    const destination = `${filePath}.${index}`;
+    if (!fs.existsSync(source)) {
+      continue;
+    }
+    if (index === retainedLogFiles) {
+      fs.rmSync(destination, { force: true });
+    }
+    fs.renameSync(source, destination);
+  }
 }
 
 function toCamel(value) {

@@ -23,6 +23,7 @@ const DEFAULT_LONG_POLL_TIMEOUT_MS = 35_000;
 const DEFAULT_API_TIMEOUT_MS = 15_000;
 const DEFAULT_CONFIG_TIMEOUT_MS = 10_000;
 const DEFAULT_ADDRESS_ATTEMPT_TIMEOUT_MS = 5_000;
+const DEFAULT_QR_ADDRESS_ATTEMPT_TIMEOUT_MS = 15_000;
 const DEFAULT_LONG_POLL_ADDRESS_ATTEMPT_TIMEOUT_MS = 20_000;
 const DEFAULT_CHANNEL_VERSION = '2.2.0';
 
@@ -388,9 +389,16 @@ async function resolveHostAddresses(hostname: string): Promise<string[]> {
 }
 
 function computeAddressAttemptTimeoutMs(params: RawRequestOptions): number {
-  return params.endpoint === 'ilink/bot/getupdates'
-    ? DEFAULT_LONG_POLL_ADDRESS_ATTEMPT_TIMEOUT_MS
-    : DEFAULT_ADDRESS_ATTEMPT_TIMEOUT_MS;
+  if (params.endpoint === 'ilink/bot/getupdates') {
+    return DEFAULT_LONG_POLL_ADDRESS_ATTEMPT_TIMEOUT_MS;
+  }
+  if (
+    params.endpoint.startsWith('ilink/bot/get_bot_qrcode')
+    || params.endpoint.startsWith('ilink/bot/get_qrcode_status')
+  ) {
+    return DEFAULT_QR_ADDRESS_ATTEMPT_TIMEOUT_MS;
+  }
+  return DEFAULT_ADDRESS_ATTEMPT_TIMEOUT_MS;
 }
 
 function requestJsonOverHttpsAddress({

@@ -156,6 +156,44 @@ test('file-backed provider profiles are reconciled to the current runtime config
   );
 });
 
+test('file-backed repositories discard bindings whose provider profile no longer exists', async () => {
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codexbridge-json-store-'));
+  const providerPlugin = new FakeProviderPlugin('openai-native');
+  const staleProfile = makeProviderProfile('stale-provider', 'openai-native', 'Stale Provider');
+  const currentProfile = makeProviderProfile('openai-default', 'openai-native', 'OpenAI Default');
+
+  const runtimeA = createCodexBridgeRuntime({
+    providerPlugins: [providerPlugin],
+    providerProfiles: [staleProfile],
+    defaultProviderProfileId: staleProfile.id,
+    repositories: createFileJsonRepositories(stateDir),
+  });
+  await runtimeA.services.bridgeCoordinator.handleInboundEvent({
+    platform: 'weixin',
+    externalScopeId: 'wx-user-stale-provider',
+    text: 'hello',
+  });
+
+  const runtimeB = createCodexBridgeRuntime({
+    providerPlugins: [providerPlugin],
+    providerProfiles: [currentProfile],
+    defaultProviderProfileId: currentProfile.id,
+    repositories: createFileJsonRepositories(stateDir),
+  });
+
+  assert.equal(
+    runtimeB.repositories.platformBindings.getByScope('weixin', 'wx-user-stale-provider'),
+    null,
+  );
+
+  const response = await runtimeB.services.bridgeCoordinator.handleInboundEvent({
+    platform: 'weixin',
+    externalScopeId: 'wx-user-stale-provider',
+    text: 'hello again',
+  });
+  assert.equal(response.session?.providerProfileId, currentProfile.id);
+});
+
 test('file-backed repositories preserve thread aliases across runtime restarts', async () => {
   const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codexbridge-json-store-'));
   const providerProfile = makeProviderProfile('openai-default', 'openai-native', 'OpenAI Default');

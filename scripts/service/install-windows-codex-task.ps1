@@ -97,7 +97,12 @@ if (-not $DefaultCwd) {
   $DefaultCwd = Join-Path $HomeDir "Documents"
 }
 
-$CodexBin = Find-CommandPath @("codex.exe", "codex.cmd", "codex.bat", "codex")
+$NpmCodexBin = Join-Path (Resolve-ServiceAppData $HomeDir) "npm\codex.cmd"
+$CodexBin = if (Test-Path $NpmCodexBin) {
+  $NpmCodexBin
+} else {
+  Find-CommandPath @("codex.cmd", "codex.bat", "codex.exe", "codex")
+}
 $ConfigDir = Split-Path -Parent $EnvFile
 $LogDir = Join-Path $StateDir "logs"
 $StdoutLog = Join-Path $LogDir "codex-native-api.out.log"
@@ -124,7 +129,7 @@ if (-not (Test-Path $EnvFile)) {
   ) | Set-Content -Encoding UTF8 -Path $EnvFile
 } else {
   Ensure-EnvLine $EnvFile "CODEX_HOME" $CodexHome
-  Ensure-EnvLine $EnvFile "CODEX_REAL_BIN" $CodexBin
+  Set-EnvLine $EnvFile "CODEX_REAL_BIN" $CodexBin
   Set-EnvLine $EnvFile "CODEX_NATIVE_API_ENABLE" "0"
   Set-EnvLine $EnvFile "CODEX_NATIVE_API_HOST" "127.0.0.1"
   Set-EnvLine $EnvFile "CODEX_NATIVE_API_PORT" "43182"

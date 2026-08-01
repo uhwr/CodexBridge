@@ -107,6 +107,17 @@ export function createCodexBridgeRuntime({
     }
   }
 
+  const availableProviderProfiles = providerProfilesRepository.list();
+  if (availableProviderProfiles.length > 0) {
+    const availableProviderProfileIds = new Set(availableProviderProfiles.map((profile) => profile.id));
+    for (const binding of platformBindingsRepository.list()) {
+      const session = bridgeSessionsRepository.getById(binding.bridgeSessionId);
+      if (!session || !availableProviderProfileIds.has(session.providerProfileId)) {
+        platformBindingsRepository.delete(binding.platform, binding.externalScopeId);
+      }
+    }
+  }
+
   const sessionRouter = new SessionRouter({
     platformBindings: platformBindingsRepository,
     bridgeSessions: bridgeSessionsRepository,

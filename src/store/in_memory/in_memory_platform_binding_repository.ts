@@ -30,6 +30,10 @@ export class InMemoryPlatformBindingRepository implements PlatformBindingReposit
     return this.setBinding(binding);
   }
 
+  delete(platform: string, externalScopeId: string): void {
+    this.records.delete(formatPlatformScopeKey(platform, externalScopeId));
+  }
+
   list(): PlatformBinding[] {
     return [...this.records.values()];
   }
